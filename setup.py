@@ -21,8 +21,10 @@ setup(
         'asyncio;python_version<"3.4"',
         'aiohttp',
         'aiofiles',
+        'click',
         'requests'
     ],
+    entry_points={'console_scripts': ['velocity=velocity:cli']},
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',

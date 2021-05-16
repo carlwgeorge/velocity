@@ -8,6 +8,7 @@ import asyncio
 import aiohttp
 import json
 import os
+import click
 
 
 class Velocity(object):
@@ -346,3 +347,97 @@ class Velocity(object):
 
         # Close out the session on completion
         await self.session.close()
+
+
+def run_action(username, apikey, region, action, container, directory=None):
+    loop = asyncio.get_event_loop()
+    velocity = Velocity(loop, username, apikey, region.upper())
+
+    try:
+        velocity.authenticate()
+        if action == 'upload':
+            velocity.create_container(container)
+        loop.run_until_complete(velocity.process(container, action, directory))
+    except Exception as e:
+        print(f'There was an exception here {e}')
+    finally:
+        loop.run_until_complete(velocity.close_session())
+
+    loop.close()
+
+    if len(velocity.errors) > 0:
+        for error in velocity.errors:
+            print(error)
+    else:
+        print('Huzzah! No errors reported.')
+
+
+@click.group()
+@click.option('--username', envvar='VELOCITY_USERNAME')
+@click.option('--apikey', envvar='VELOCITY_APIKEY')
+@click.option('--region', envvar='VELOCITY_REGION')
+@click.pass_context
+def cli(username, apikey, region, ctx):
+    ctx.obj = {
+        'username': username,
+        'apikey': apikey,
+        'region': region,
+    }
+
+
+@cli.command()
+@click.argument('container')
+@click.argument('directory', type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.pass_obj
+def head(container, directory):
+    run_action(
+        obj['username'],
+        obj['apikey'],
+        obj['region'],
+        'head',
+        container,
+        directory,
+    )
+
+
+@cli.command()
+@click.argument('container')
+@click.pass_obj
+def delete(container):
+    run_action(
+        obj['username'],
+        obj['apikey'],
+        obj['region'],
+        'delete',
+        container,
+    )
+
+
+@cli.command()
+@click.argument('container')
+@click.argument('directory', type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.pass_obj
+def upload(container, directory, obj):
+    run_action(
+        obj['username'],
+        obj['apikey'],
+        obj['region'],
+        'upload',
+        container,
+        directory,
+    )
+
+
+@cli.command()
+@click.argument('container')
+@click.argument('directory', type=click.Path(exists=True, file_okay=False, dir_okay=True))
+@click.pass_obj
+def download(container, directory, obj):
+    run_action(
+        obj['username'],
+        obj['apikey'],
+        obj['region'],
+        'download',
+        container,
+        directory,
+    )
